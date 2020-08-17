@@ -76,8 +76,7 @@ module.exports = {
 		if(embeds[0]) return embeds;
 		else return "No valid starboards exist.";
 	},
-	subcommands: {},
-	permissions: ["manageGuild"],
+	permissions: ["MANAGE_GUILD"],
 	guildOnly: true,
 	alias: ["b", "board", "sb", "starboard", "starboards"]
 }
