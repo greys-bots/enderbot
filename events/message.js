@@ -41,7 +41,7 @@ module.exports = async (msg, bot)=>{
 			config = await bot.stores.configs.get(msg.guild.id);
 		}
 
-		var check = await bot.utils.checkPermissions(bot, msg, command);
+		var check = await bot.utils.checkPermissions(bot, msg, command, config);
 		if(!check) {
 			log.push('- Missing permissions -');
 			console.log(log.join('\r\n'));

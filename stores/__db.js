@@ -9,7 +9,8 @@ module.exports = async (bot) => {
 	    	id 				SERIAL PRIMARY KEY,
 	        server_id   	TEXT UNIQUE,
 	        tolerance 		TEXT,
-	        override 		BOOLEAN
+	        override 		BOOLEAN,
+	        opped 			TEXT[]
 	    );
 
 		CREATE TABLE IF NOT EXISTS starboards (

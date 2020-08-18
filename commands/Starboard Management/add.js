@@ -17,12 +17,12 @@ module.exports = {
 		try {
 			await bot.stores.starboards.create(msg.guild.id, chan.id, emoji);
 		} catch(e) {
-			return "ERR: "+e;
+			return "Error:\n"+e;
 		}
 
 		return "Starboard created.";
 	},
-	permissions: ["manageGuild"],
+	permissions: ["MANAGE_CHANNELS"],
 	guildOnly: true,
 	alias: ["a","n","new","+"]
 }

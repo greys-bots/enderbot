@@ -14,9 +14,10 @@ class ConfigStore extends Collection {
 				await this.db.query(`INSERT INTO configs (
 					server_id,
 					tolerance,
-					override
-				) VALUES ($1, $2, $3)`,
-				[server, data.tolerance, data.override]);
+					override,
+					opped
+				) VALUES ($1, $2, $3, $4)`,
+				[server, data.tolerance, data.override, data.opped]);
 			} catch(e) {
 				console.log(e)
 				return rej(e.message);
@@ -32,9 +33,10 @@ class ConfigStore extends Collection {
 				await this.db.query(`INSERT INTO configs (
 					server_id,
 					tolerance,
-					override
-				) VALUES ($1, $2, $3)`,
-				[server, data.tolerance, data.override]);
+					override,
+					opped
+				) VALUES ($1, $2, $3, $4)`,
+				[server, data.tolerance, data.override, data.opped]);
 			} catch(e) {
 				console.log(e)
 				return rej(e.message);
@@ -48,7 +50,7 @@ class ConfigStore extends Collection {
 		return new Promise(async (res, rej) => {
 			if(!forceUpdate) {
 				var config = super.get(server);
-				if(config) return config;
+				if(config) return res(config);
 			}
 
 			try {

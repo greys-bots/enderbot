@@ -86,7 +86,7 @@ class StarPostStore extends Collection {
 			var embed = new MessageEmbed({
 				author: {
 					name: `${msg.author.username}#${msg.author.discriminator}`,
-					icon_url: msg.author.avatarURL
+					icon_url: msg.author.avatarURL()
 				},
 				footer: {
 					text: chan.name

@@ -83,4 +83,4 @@ process.on("unhandledRejection", (e) => console.log(e));
 
 setup();
 bot.login(process.env.TOKEN)
-.catch(e => console.log("Trouble connecting...\n"+e));
+.catch(e => console.log("Trouble connecting:\n"+e));

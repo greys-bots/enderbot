@@ -161,13 +161,20 @@ module.exports = {
 		}
 	},
 
-	checkPermissions: async (bot, msg, cmd)=>{
+	checkPermissions: async (bot, msg, cmd, cfg)=>{
 		return new Promise((res)=> {
-			if(cmd.permissions) res(msg.member.permissions.has(cmd.permissions))
-			else res(true);
+			if(!cmd.permissions) return res(true);
+			console.log(cfg);
+
+			if(cfg?.opped?.includes(msg.author.id) ||
+			   msg.member.roles.cache.find(r => cfg?.opped?.includes(r.id)))
+				return res(true);
+			
+			res(msg.member.permissions.has(cmd.permissions))
 		})
 	},
 
+	//accessible reactions
 	getConfirmation: async (bot, msg, user) => {
 		return new Promise(res => {
 
@@ -185,7 +192,7 @@ module.exports = {
 						return res({confirmed: true, message});
 						break;
 					default:
-						return res({confirmed: false, message, msg: 'Action cancelled!'});
+						return res({confirmed: false, message, msg: 'Action cancelled.'});
 						break;
 				}
 			}
@@ -202,7 +209,7 @@ module.exports = {
 						return res({confirmed: true, react});
 						break;
 					default:
-						return res({confirmed: false, react, msg: 'Action cancelled!'});
+						return res({confirmed: false, react, msg: 'Action cancelled.'});
 						break;
 				}
 			}
@@ -210,7 +217,74 @@ module.exports = {
 			const timeout = setTimeout(async () => {
 				bot.removeListener('message', msgListener);
 				bot.removeListener('messageReactionAdd', reactListener);
-				res({confirmed: false, msg: 'ERR! Timed out!'})
+				res({confirmed: false, msg: 'Action timed out.'})
+			}, 30000);
+
+			bot.on('message', msgListener);
+			bot.on('messageReactionAdd', reactListener);
+		})
+	},
+	handleChoices: async (bot, msg, user, choices) => {
+		/*
+			example usage pseudo-code:
+			choices = [
+				{
+					accepted: ['y', 'yes', 'yeah', '✅'],
+					name: 'yes',
+					msg: 'You picked `yes`.'
+				},
+				{
+					accepted: ['n', 'no', 'nah', '❌'],
+					name: 'no',
+					msg: 'You picked `no`.'
+				}
+			]
+
+			chosen = await handleChoices(...args);
+
+			switch(chosen.name) {
+				case 'yes':
+				case 'no':
+					return chosen.msg;
+					break;
+				case 'invalid':
+					return 'You picked something else.';
+					break;
+				default:
+					return 'You picked nothing.'
+					break;
+			}
+		*/
+		return new Promise(res => {
+
+			function msgListener(message) {
+				if(message.channel.id != msg.channel.id ||
+				   message.author.id != user.id) return;
+
+				clearTimeout(timeout);
+				bot.removeListener('message', msgListener);
+				bot.removeListener('messageReactionAdd', reactListener);
+				var choice = choices.find(c => c.accepted.includes(message.content.toLowerCase()));
+				if(choice) return res({...choice, message});
+				else return res({choice: 'invalid', message});
+			}
+
+			function reactListener(react, ruser) {
+				if(react.message.channel.id != msg.channel.id ||
+				   ruser.id != user.id) return;
+
+				clearTimeout(timeout);
+				bot.removeListener('message', msgListener);
+				bot.removeListener('messageReactionAdd', reactListener);
+				var choice = choices.find(c => c.accepted.includes(react.emoji.name));
+				if(choice) return res({...choice, react});
+				else return res({choice: 'invalid', react});
+			}
+
+			const timeout = setTimeout(async () => {
+				bot.removeListener('message', msgListener);
+				bot.removeListener('messageReactionAdd', reactListener);
+				res({choice: 'none', msg: 'Action timed out.'})
 			}, 30000);
 
 			bot.on('message', msgListener);
