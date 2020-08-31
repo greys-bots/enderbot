@@ -91,9 +91,25 @@ class StatStore extends Collection {
 			}
 
 			if(data?.rows[0]) {
-				if(filters.user) data.rows = data.rows.filter(x => x.user_id == filters.user);
-				if(filters.count) data.rows = data.rows.slice(0, filters.count);
-				res(data.rows)
+				if(filters.user) stats = stats.filter(x => x.user_id == filters.user);
+				
+				var stats = [];
+				for(var stat of data.rows) {
+					var s = stats.findIndex(u => u.user_id == stat.user_id);
+					if(s > -1) {
+						stats[s].stars_added += stat.stars_added;
+						stats[s].posts_made += stat.posts_made;
+					} else {
+						stats.push({
+							user_id: stat.user_id,
+							posts_made: stat.posts_made || 0,
+							stars_added: stat.stars_added || 0
+						})
+					}
+				}
+
+				if(filters.count) stats = stats.slice(0, filters.count);
+				res(stats)
 			} else return res(undefined);
 		})
 	}

@@ -31,7 +31,7 @@ module.exports = {
 		var i = 0;
 		for(var p of top) {
 			var emote = p.emoji.includes(":") ? `<${p.emoji}>` : `${p.emoji}`;
-			var channel = msg.guild.channels.resolve(p.channel_id);
+			var channel = await bot.channels.fetch(p.channel_id);
 			var message = await channel?.messages.fetch(p.message_id);
 			var snippet;
 			if(message && message.embeds?.[0]?.description) snippet = message.embeds[0].description.slice(0, 512);

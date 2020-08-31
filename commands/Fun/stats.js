@@ -15,13 +15,24 @@ module.exports = {
 				if(!stats?.[0]) return 'No records found.';
 
 				var embeds = [];
+				var users = [];
+				var channels = [];
 				for(var stat of stats) {
-					var user = await bot.users.fetch(stat.user_id);
-					var channel = await bot.channels.fetch(stat.starboard);
+					var user = users.find(u => u.id == stat.user_id);
+					if(!user) {
+						user = await bot.users.fetch(stat.user_id);
+						users.push(user);
+					}
+
+					var channel = channels.find(c => c.id == stat.starboard);
+					if(!channel) {
+						channel = await bot.channels.fetch(stat.starboard);
+						channels.push(channel);
+					}
 					embeds.push({embed: {
 						title: 'Stats',
 						fields: [
-							{name: 'User', value: `${user} (${user.id})`},
+							{name: 'User', value: `${user} (${user.id})` || "(user not found)"},
 							{name: 'Channel', value: `${channel || "(channel not found)"}`},
 							{name: 'Stars added', value: stat.stars_added || 0},
 							{name: 'Posts created', value: stat.posts_made || 0}
@@ -47,26 +58,16 @@ module.exports = {
 				}
 				var stats = await bot.stores.stats.getGlobal({user});
 				if(!stats?.[0]) return 'No records found.';
-
-				var tmp = [];
-				for(var stat of stats) {
-					var s = tmp.findIndex(t => t.user_id == stat.user_id);
-					if(s > -1) {
-						tmp[s].stars_added += stat.stars_added;
-						tmp[s].posts_made += stat.posts_made;
-					} else {
-						tmp.push({
-							user_id: stat.user_id,
-							posts_made: stat.posts_made || 0,
-							stars_added: stat.stars_added || 0
-						})
-					}
-				}
-				stats = tmp;
 				
 				var embeds = [];
+				var users = [];
 				for(var stat of stats) {
-					var user = await bot.users.fetch(stat.user_id);
+					var user = users.find(u => u.id == stat.user_id);
+					if(!user) {
+						user = await bot.users.fetch(stat.user_id);
+						users.push(user);
+					}
+
 					embeds.push({embed: {
 						title: 'Stats',
 						fields: [
@@ -104,9 +105,20 @@ module.exports = {
 				if(!stats?.[0]) return 'No records found.';
 
 				var embeds = [];
+				var users = [];
+				var channels = [];
 				for(var stat of stats) {
-					var user = await bot.users.fetch(stat.user_id);
-					var channel = await bot.channels.fetch(stat.starboard);
+					var user = users.find(u => u.id == stat.user_id);
+					if(!user) {
+						user = await bot.users.fetch(stat.user_id);
+						users.push(user);
+					}
+
+					var channel = channels.find(c => c.id == stat.starboard);
+					if(!channel) {
+						channel = await bot.channels.fetch(stat.starboard);
+						channels.push(channel);
+					}
 					embeds.push({embed: {
 						title: 'Stats',
 						fields: [
