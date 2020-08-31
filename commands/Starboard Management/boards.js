@@ -25,12 +25,19 @@ module.exports = {
 				return "That starboard is not valid and has been deleted.";
 			}
 
+			var self_star;
+			if(board.self_star != null) self_star = board.self_star ? 'Enabled.' : 'Disabled.';
+			else self_star = config?.self_star ? 'Enabled.' : 'Disabled.';
+
 			return {embed: {
 				title: channel.name,
 				fields: [
 					{name: "Emoji", value: board.emoji.includes(":") ? `<${board.emoji}>` : board.emoji},
-					{name: "Tolerance", value: board.tolerance ? board.tolerance : (config?.tolerance || 2)},
+					{name: "Tolerance", value: board.tolerance || config?.tolerance || 2},
+					{name: "Remove Tolerance", value: board.remove_tolerance || config?.remove_tolerance || 0},
 					{name: "Moderator Override", value: board.override ? "Enabled." : "Disabled."},
+					{name: "Channel Blacklist", value: board.blacklist?.map(c => `${msg.guild.channels.resolve(c)}`).join(", ") || "*(empty)*"},
+					{name: "Self-starring", value: self_star},
 					{name: "Message Count", value: board.message_count}
 				],
 				color: parseInt("aa55aa", 16)
@@ -46,12 +53,18 @@ module.exports = {
 		for(var i = 0; i < boards.length; i++) {
 			var channel = msg.guild.channels.cache.find(ch => ch.id == boards[i].channel_id);
 			if(channel) {
+				var self_star;
+				if(boards[i].self_star != null) self_star = boards[i].self_star ? 'Enabled.' : 'Disabled.';
+				else self_star = config?.self_star ? 'Enabled.' : 'Disabled.';
 				embeds.push({embed: {
 					title: `${channel.name} (${i+1}/${boards.length})`,
 					fields: [
 						{name: "Emoji", value: boards[i].emoji.includes(":") ? `<${boards[i].emoji}>` : boards[i].emoji},
-						{name: "Tolerance", value: boards[i].tolerance ? boards[i].tolerance : (config?.tolerance || 2)},
-						{name: "Moderator Override", value: boards[i].override ? "Yes" : "No"},
+						{name: "Tolerance", value: boards[i].tolerance || config?.tolerance || 2},
+						{name: "Remove Tolerance", value: boards[i].remove_tolerance || config?.remove_tolerance || 0},
+						{name: "Moderator Override", value: boards[i].override ? "Enabled." : "Disabled."},
+						{name: "Channel Blacklist", value: boards[i].blacklist?.map(c => `${msg.guild.channels.resolve(c)}`).join(", ") || "*(empty)*"},
+						{name: "Self-starring", value: self_star},
 						{name: "Message Count", value: boards[i].message_count}
 					],
 					color: parseInt("aa55aa", 16)

@@ -68,48 +68,41 @@ class StarPostStore extends Collection {
 
 	async create(server, channel, msg, data = {}) {
 		return new Promise(async (res, rej) => {
-			var guild = this.bot.guilds.resolve(server);
-			var chan = guild.channels.resolve(channel);
-			var attachments = [];
-			if(msg.attachments.size > 0) {
-				msg.attachments = msg.attachments.map(a => a);
-				for(var attachment of msg.attachments) {
-					var req = await axios(attachment.url, {responseType: 'arraybuffer'});
-					req = Buffer.from(req.data, 'binary');
-					if(req.length > 8000000) continue;
-					var att = new MessageAttachment(req);
-					att.setName(attachment.name);
-					attachments.push(att);
-				}
-			}
+			var chan = await this.bot.channels.fetch(channel);
 
 			var embed = new MessageEmbed({
 				author: {
 					name: `${msg.author.username}#${msg.author.discriminator}`,
 					icon_url: msg.author.avatarURL()
 				},
-				footer: {
-					text: chan.name
+				description: (msg.content || "*(file only)*"),
+				image: {
+					url: msg.attachments.first()?.url
 				},
-				description: (msg.content || "*(file only)*") + `\n\n[Go to message](https://discordapp.com/channels/${msg.channel.guild.id}/${msg.channel.id}/${msg.id})`,
+				fields: [
+					{name: "Message Link", value: `[Go to message](https://discordapp.com/channels/${msg.channel.guild.id}/${msg.channel.id}/${msg.id})`}
+				],
+				footer: {
+					text: chan.name +
+						  (msg.attachments.size > 0 ? ' | See original for full attachments.' : '')
+				},
 				timestamp: new Date(msg.createdTimestamp).toISOString()
 			});
 
 			try {
-				var message = await chan.send(
-					`${data.emoji.includes(":") ? `<${data.emoji}>` : data.emoji} ${data.count}`,
-				[
-					embed,
-					...attachments
-				]);
+				var message = await chan.send({
+					content: `${data.emoji.includes(":") ? `<${data.emoji}>` : data.emoji} ${data.count}`,
+					embed
+				});
 				await this.db.query(`INSERT INTO star_posts (
 					server_id,
 					channel_id,
 					message_id,
 					original_id,
-					emoji
-				) VALUES ($1,$2,$3,$4,$5)`,
-				[server, channel, message.id, msg.id, data.emoji])
+					emoji,
+					star_count
+				) VALUES ($1,$2,$3,$4,$5,$6)`,
+				[server, channel, message.id, msg.id, data.emoji, data.count])
 			} catch(e) {
 				console.log(e);
 				return rej(e.message);
@@ -119,7 +112,6 @@ class StarPostStore extends Collection {
 		})
 	}
 
-	//for migrations/indexing existing messages
 	async index(server, channel, message, data = {}) {
 		return new Promise(async (res, rej) => {
 			try {
@@ -128,15 +120,16 @@ class StarPostStore extends Collection {
 					channel_id,
 					message_id,
 					original_id,
-					emoji
-				) VALUES ($1,$2,$3,$4,$5)`,
-				[server, channel, message, data.original_id, data.emoji])
+					emoji,
+					star_count
+				) VALUES ($1,$2,$3,$4,$5,$6)`,
+				[server, channel, message, data.original_id, data.emoji, data.count])
 			} catch(e) {
 				console.log(e);
 				return rej(e.message);
 			}
 		
-			res(await this.get(server, message));
+			res();
 		})
 	}
 
@@ -222,11 +215,54 @@ class StarPostStore extends Collection {
 		})
 	}
 
+	async getTop(server, options = {count: 10}) {
+		return new Promise(async (res, rej) => {
+			try {
+				if(options.board) {
+					var data = await this.db.query(`
+						SELECT DISTINCT * FROM star_posts
+						WHERE server_id = $1 AND channel_id = $2
+						ORDER BY star_count DESC
+						LIMIT $3`,
+					[server, options.board, options.count]);
+				} else {
+					var data = await this.db.query(`
+						SELECT DISTINCT * FROM star_posts
+						WHERE server_id = $1
+						ORDER BY star_count DESC
+						LIMIT $2`,
+					[server, options.count]);
+				}
+					
+			} catch(e) {
+				console.log(e);
+				return rej(e.message);
+			}
+
+			if(data.rows?.[0]) {
+				var boards = [];
+				for(var post of data.rows) {
+					var board = boards.find(b => b.channel_id == post.channel_id);
+					if(board) post.starboard = board;
+					else {
+						post.starboard = await this.bot.stores.starboards.get(server, post.channel_id);
+						boards.push(post.starboard);
+					}
+				}
+				res(data.rows);
+			} else res(undefined);
+		})
+	}
+
 	async update(server, message, data = {}) {
 		return new Promise(async (res, rej) => {
-			//no database updates needed! yay!
 			try {
-				var post = await this.get(server, message);
+				var post = await this.db.query(`
+					UPDATE star_posts SET star_count = $1
+					WHERE server_id = $2 AND message_id = $3
+					RETURNING *`,
+					[data.count || 0, server, message])
+				post = post.rows[0];
 			} catch(e) {
 				console.log(e);
 				return rej(e.message);
@@ -234,9 +270,8 @@ class StarPostStore extends Collection {
 			
 			try {
 				if(data.count > 0) {
-					var guild = this.bot.guilds.resolve(server);
-					var channel = guild.channels.resolve(post.channel_id);
-					var msg = await channel.messages.fetch(message);
+					var channel = await this.bot.channels.fetch(post.channel_id);
+					var msg = await channel?.messages.fetch(message);
 					await msg.edit(
 						`${post.emoji.includes(":") ?
 						`<${post.emoji}>` :
@@ -247,6 +282,19 @@ class StarPostStore extends Collection {
 				console.log(e);
 				return rej(e.message || e);
 			}
+			res();
+		})
+	}
+
+	async updateEmoji(server, old_emoji, new_emoji) {
+		return new Promise(async (res, rej) => {
+			try {
+				await this.db.query(`UPDATE star_posts SET emoji = $1 WHERE server_id = $2 AND emoji = $3`, [new_emoji, server, old_emoji]);
+			} catch(e) {
+				console.log(e);
+				return rej(e.message);
+			}
+
 			res();
 		})
 	}
@@ -299,10 +347,10 @@ class StarPostStore extends Collection {
 		return new Promise(async (res, rej) => {
 			if(this.bot.user.id == user.id) return;
 			if(user.bot) return;
-
-			var msg = react.message;
 			try {
-				if(msg.partial) msg = await msg.fetch();
+				if(react.partial) react = await react.fetch();
+				if(react.message.partial) var msg = await msg.fetch();
+				else var msg = react.message;
 			} catch(e) {
 				if(!e.message.toLowerCase().includes("unknown message")) console.log(e);
 				return rej(e.message);
@@ -313,7 +361,10 @@ class StarPostStore extends Collection {
 			var emoji = react.emoji.id ? `:${react.emoji.name}:${react.emoji.id}` : react.emoji.name;
 			var board = await this.bot.stores.starboards.getByEmoji(msg.guild.id, emoji);
 			if(!board) return res();
+
 			var cfg = await this.bot.stores.configs.get(msg.guild.id);
+			if(!(cfg?.self_star || board.self_star) && user.id == msg.author.id) return res();
+
 			var tolerance = board.tolerance || cfg?.tolerance || 2;
 			var member = msg.guild.members.cache.find(m => m.id == user.id);
 			if(!member) return rej("Member not found.");
@@ -322,13 +373,19 @@ class StarPostStore extends Collection {
 			var post = await this.get(msg.guild.id, msg.id);
 
 			var scc;
-			if(post) return res();
-			//handle posts getting on multiple starboards
-			else if(orig?.[0] && orig.find(p => p.starboard.channel_id == board.channel_id)){
+			if(orig?.[0] && orig.find(p => p.starboard.channel_id == board.channel_id)){
 				orig = orig.find(p => p.channel_id == board.channel_id);
 				scc = await this.update(msg.guild.id, orig.message_id, {emoji: emoji, count: react.count || 0});
-			} else if(react.count >= tolerance || (board.override && member.permissions.has("MANAGE_MESSAGES")))
+			} else if(react.count >= tolerance || (board.override && member.permissions.has("MANAGE_MESSAGES"))) {
 				scc = await this.create(msg.guild.id, board.channel_id, msg, {emoji: emoji, count: react.count || 0});
+				var owner_stats = await this.bot.stores.stats.get(msg.guild.id, {user: msg.author.id, board: board.channel_id});
+				if(owner_stats?.[0]) await this.bot.stores.stats.update(msg.guild.id, board.channel_id, msg.author.id, {posts_made: owner_stats[0].posts_made + 1});
+				else await this.bot.stores.stats.create(msg.guild.id, board.channel_id, msg.author.id, {posts_made: 1});
+			}
+
+			var stats = await this.bot.stores.stats.get(msg.guild.id, {user: user.id, board: board.channel_id});
+			if(stats?.[0]) await this.bot.stores.stats.update(msg.guild.id, board.channel_id, user.id, {stars_added: stats[0].stars_added + 1});
+			else await this.bot.stores.stats.create(msg.guild.id, board.channel_id, msg.author.id, {stars_added: 1});
 			
 			res(scc);
 		})
@@ -338,28 +395,37 @@ class StarPostStore extends Collection {
 		return new Promise(async (res, rej) => {
 			var msg = react.message;
 			try {
-				if(msg.partial) msg = await msg.fetch();
+				if(react.partial) react = await react.fetch();
+				if(react.message.partial) var msg = await msg.fetch();
+				else var msg = react.message;
 			} catch(e) {
 				if(!e.message.toLowerCase().includes("unknown message")) console.log(e);
 				return rej(e.message);
 			}
 
-			if(!msg.channel.guild) return res();
-
+			if(!msg.guild) return res();
+			var config = await this.bot.stores.configs.get(msg.guild.id);
 			var reaction = react.emoji.id ? `:${react.emoji.name}:${react.emoji.id}` : react.emoji.name;
 			var post = await this.getByOriginal(msg.channel.guild.id, msg.id);
 			if(!post?.[0]) return;
 			post = post.find(p => p.starboard.emoji == reaction);
 			if(!post) return;
+			if(!(cfg?.self_star || p.starboard.self_star) && user.id == msg.author.id) return res();
+			var tolerance = post.starboard?.to_remove || config?.to_remove || 0;
 
-			if(react.count > 0) {
+			if(react.count > tolerance) {
 				await this.update(post.server_id, post.message_id, {emoji: reaction, count: react.count || 0});
 				return;
 			}
 
-			var guild = this.bot.guilds.resolve(msg.guild.id);
-			var channel = guild.channels.resolve(post.channel_id);
+			var channel = await this.bot.channels.fetch(post.channel_id);
 			var message = await channel.messages.fetch(post.message_id);
+
+			var owner_stats = await this.bot.stores.stats.get(msg.guild.id, {user: msg.author.id, board: post.starboard.channel_id});
+			if(owner_stats?.[0]) await this.bot.stores.stats.update(msg.guild.id, post.starboard.channel_id, msg.author.id, {posts_made: owner_stats[0].posts_made - 1});
+
+			var stats = await this.bot.stores.stats.get(msg.guild.id, {user: user.id, board: post.starboard.channel_id});
+			if(stats?.[0]) await this.bot.stores.stats.update(msg.guild.id, post.starboard.channel_id, user.id, {stars_added: stats[0].stars_added - 1});
 
 			try {
 				await message.delete();
@@ -378,9 +444,11 @@ class StarPostStore extends Collection {
 			if(!post) return;
 
 			for(var i = 0; i < post.length; i++) {
-				var guild = this.bot.guilds.resolve(msg.guild.id);
-				var channel = guild.channels.resolve(post.channel_id);
+				var channel = await this.bot.channels.fetch(post.channel_id);
 				var message = await channel.messages.fetch(post.message_id);
+
+				var owner_stats = await this.bot.stores.stats.get(msg.guild.id, {user: msg.author.id, board: post.starboard.channel_id});
+			if(owner_stats?.[0]) await this.bot.stores.stats.update(msg.guild.id, post.starboard.channel_id, msg.author.id, {posts_made: owner_stats[0].posts_made - 1});
 
 				try {
 					await message.delete();

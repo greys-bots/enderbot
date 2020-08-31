@@ -14,10 +14,13 @@ class ConfigStore extends Collection {
 				await this.db.query(`INSERT INTO configs (
 					server_id,
 					tolerance,
+					to_remove,
 					override,
-					opped
-				) VALUES ($1, $2, $3, $4)`,
-				[server, data.tolerance, data.override, data.opped]);
+					opped,
+					self_star
+				) VALUES ($1, $2, $3, $4, $5, $6)`,
+				[server, data.tolerance, data.to_remove,
+				 data.override, data.opped, data.self_star || true]);
 			} catch(e) {
 				console.log(e)
 				return rej(e.message);
@@ -33,10 +36,13 @@ class ConfigStore extends Collection {
 				await this.db.query(`INSERT INTO configs (
 					server_id,
 					tolerance,
+					to_remove,
 					override,
-					opped
-				) VALUES ($1, $2, $3, $4)`,
-				[server, data.tolerance, data.override, data.opped]);
+					opped,
+					self_star
+				) VALUES ($1, $2, $3, $4, $5, $6)`,
+				[server, data.tolerance, data.to_remove,
+				 data.override, data.opped, data.self_star || true]);
 			} catch(e) {
 				console.log(e)
 				return rej(e.message);
@@ -84,6 +90,7 @@ class ConfigStore extends Collection {
 		return new Promise(async (res, rej) => {
 			try {
 				await this.db.query(`DELETE FROM configs WHERE server_id = $1`, [server]);
+				super.delete(server);
 			} catch(e) {
 				console.log(e);
 				return rej(e.message);

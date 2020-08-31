@@ -8,9 +8,20 @@ module.exports = async (bot) => {
 		CREATE TABLE IF NOT EXISTS configs (
 	    	id 				SERIAL PRIMARY KEY,
 	        server_id   	TEXT UNIQUE,
-	        tolerance 		TEXT,
+	        tolerance 		INTEGER,
+	        to_remove 		INTEGER,
 	        override 		BOOLEAN,
-	        opped 			TEXT[]
+	        opped 			TEXT[],
+	        self_star 		BOOLEAN
+	    );
+
+	    CREATE TABLE IF NOT EXISTS stats (
+	    	id 				SERIAL PRIMARY KEY,
+	    	server_id 		TEXT,
+	    	starboard 		TEXT,
+	    	user_id 		TEXT,
+	    	stars_added 	INTEGER,
+	    	posts_made 		INTEGER
 	    );
 
 		CREATE TABLE IF NOT EXISTS starboards (
@@ -20,7 +31,9 @@ module.exports = async (bot) => {
 			emoji			TEXT,
 			override		BOOLEAN,
 			tolerance		INTEGER,
-			blacklist		JSONB
+			to_remove 		INTEGER,
+			blacklist		JSONB,
+			self_star 		BOOLEAN
 		);
 
 		CREATE TABLE IF NOT EXISTS star_posts (
@@ -29,7 +42,14 @@ module.exports = async (bot) => {
 			channel_id		TEXT REFERENCES starboards(channel_id) ON DELETE CASCADE,
 			message_id 		TEXT,
 			original_id 	TEXT,
-			emoji 			TEXT
+			emoji 			TEXT,
+			star_count		INTEGER
+		);
+
+		CREATE TABLE IF NOT EXISTS user_configs (
+			id 				SERIAL PRIMARY KEY,
+			user_id 		TEXT,
+			status 			BOOLEAN
 		);
 	`);
 	

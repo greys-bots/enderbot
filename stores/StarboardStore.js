@@ -26,9 +26,13 @@ class StarboardStore extends Collection {
 					channel_id,
 					emoji,
 					override,
-					tolerance
-				) VALUES ($1,$2,$3,$4,$5)`,
-				[server, channel, emoji, data.override || false, data.tolerance]);
+					tolerance,
+					to_remove,
+					blacklist,
+					self_star
+				) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
+				[server, channel, emoji, data.override || false,
+				 data.tolerance, data.to_remove, data.blacklist,data.self_star]);
 			} catch(e) {
 				console.log(e);
 		 		return rej(e.message);
@@ -46,9 +50,13 @@ class StarboardStore extends Collection {
 					channel_id,
 					emoji,
 					override,
-					tolerance
-				) VALUES ($1,$2,$3,$4,$5)`,
-				[server, channel, emoji, data.override || false, data.tolerance]);
+					tolerance,
+					to_remove,
+					blacklist,
+					self_star
+				) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
+				[server, channel, emoji, data.override || false,
+				 data.tolerance, data.to_remove, data.blacklist,data.self_star]);
 			} catch(e) {
 				console.log(e);
 		 		return rej(e.message);

@@ -164,7 +164,6 @@ module.exports = {
 	checkPermissions: async (bot, msg, cmd, cfg)=>{
 		return new Promise((res)=> {
 			if(!cmd.permissions) return res(true);
-			console.log(cfg);
 
 			if(cfg?.opped?.includes(msg.author.id) ||
 			   msg.member.roles.cache.find(r => cfg?.opped?.includes(r.id)))
@@ -289,6 +288,20 @@ module.exports = {
 
 			bot.on('message', msgListener);
 			bot.on('messageReactionAdd', reactListener);
+		})
+	},
+
+	getMessage: async (bot, server, channel, message) => {
+		return new Promise(async (res, rej) => {
+			try {
+				var guild = bot.guilds.resolve(server);
+				var chan = await guild.channels.resolve(channel)?.fetch();
+				var msg = await chan?.messages.fetch(message);
+			} catch(e) {
+				return rej(e);
+			}
+			
+			res(msg);
 		})
 	}
 }
