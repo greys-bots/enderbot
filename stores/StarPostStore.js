@@ -410,7 +410,7 @@ class StarPostStore extends Collection {
 			if(!post?.[0]) return;
 			post = post.find(p => p.starboard.emoji == reaction);
 			if(!post) return;
-			if(!(cfg?.self_star || p.starboard.self_star) && user.id == msg.author.id) return res();
+			if(!(config?.self_star || p.starboard.self_star) && user.id == msg.author.id) return res();
 			var tolerance = post.starboard?.to_remove || config?.to_remove || 0;
 
 			if(react.count > tolerance) {
