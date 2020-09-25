@@ -10,11 +10,7 @@ module.exports = {
 			   "the post's star count, as well as your stats. This is enabled by default.",
 	execute: async (bot, msg, args) => {		
 		var config = await bot.stores.configs.get(msg.guild.id);
-		var chan = msg.guild.channels.cache.find(ch => [ch.name, ch.id].includes(args[0].replace(/[<#>]/g,"").toLowerCase()));
-		if(!chan) return "Channel not found.";
-		var board = await bot.stores.starboards.get(msg.guild.id, chan.id);
-		if(!board) return "No board found for that channel.";
-
+		
 		switch(args.length) {
 			case 0:
 				if(!config?.self_star) return "Global self-starring already disabled.";
