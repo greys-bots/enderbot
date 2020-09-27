@@ -83,7 +83,7 @@ class StarPostStore extends Collection {
 					{name: "Message Link", value: `[Go to message](https://discordapp.com/channels/${msg.channel.guild.id}/${msg.channel.id}/${msg.id})`}
 				],
 				footer: {
-					text: chan.name +
+					text: `Message ID: ${msg.id} | Channel: ${chan.name}` +
 						  (msg.attachments.size > 0 ? ' | See original for full attachments.' : '')
 				},
 				timestamp: new Date(msg.createdTimestamp).toISOString()
