@@ -17,7 +17,6 @@ module.exports = {
 				if(!config || !config.to_remove) return "No global remove tolerance registered for this server.";
 				else {
 					var messsage = await msg.channel.createMessage(`Current global remove tolerance: ${config.to_remove}\nWould you like to reset it?`);
-					var message = await msg.channel.send("Override enabled. Would you like to disable it?");
 					["✅","❌"].forEach(r => message.react(r));
 
 					var confirm = await bot.utils.getConfirmation(bot, message, msg.author);
