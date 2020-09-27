@@ -83,7 +83,7 @@ class StarPostStore extends Collection {
 					{name: "Message Link", value: `[Go to message](https://discordapp.com/channels/${msg.channel.guild.id}/${msg.channel.id}/${msg.id})`}
 				],
 				footer: {
-					text: `Message ID: ${msg.id} | Channel: ${chan.name}` +
+					text: `Message ID: ${msg.id} | Channel: ${msg.channel.name}` +
 						  (msg.attachments.size > 0 ? ' | See original for full attachments.' : '')
 				},
 				timestamp: new Date(msg.createdTimestamp).toISOString()
@@ -410,7 +410,7 @@ class StarPostStore extends Collection {
 			if(!post?.[0]) return;
 			post = post.find(p => p.starboard.emoji == reaction);
 			if(!post) return;
-			if(!(config?.self_star || p.starboard.self_star) && user.id == msg.author.id) return res();
+			if(!(config?.self_star || post.starboard.self_star) && user.id == msg.author.id) return res();
 			var tolerance = post.starboard?.to_remove || config?.to_remove || 0;
 
 			if(react.count > tolerance) {
