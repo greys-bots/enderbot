@@ -21,7 +21,7 @@ bot.updateStatus = async function(){
 	if(typeof target == "function") bot.user.setActivity(await target());
 	else bot.user.setActivity(target);
 	bot.status++;
-		
+
 	setTimeout(()=> bot.updateStatus(), 60 * 1000) // 5 mins
 }
 

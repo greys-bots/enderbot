@@ -21,7 +21,7 @@ class StarboardStore extends Collection {
 	async create(server, channel, emoji, data = {}) {
 		return new Promise(async (res, rej) => {
 			try {
-				await this.db.query(`INSERT INTO starboards (
+				await this.db.get(`INSERT INTO starboards (
 					server_id,
 					channel_id,
 					emoji,
@@ -30,7 +30,7 @@ class StarboardStore extends Collection {
 					to_remove,
 					blacklist,
 					self_star
-				) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
+				) VALUES (?,?,?,?,?,?,?,?)`,
 				[server, channel, emoji, data.override || false,
 				 data.tolerance, data.to_remove, data.blacklist,data.self_star]);
 			} catch(e) {
@@ -45,7 +45,7 @@ class StarboardStore extends Collection {
 	async index(server, channel, emoji, data = {}) {
 		return new Promise(async (res, rej) => {
 			try {
-				await this.db.query(`INSERT INTO starboards (
+				await this.db.get(`INSERT INTO starboards (
 					server_id,
 					channel_id,
 					emoji,
@@ -54,7 +54,7 @@ class StarboardStore extends Collection {
 					to_remove,
 					blacklist,
 					self_star
-				) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
+				) VALUES (?,?,?,?,?,?,?,?)`,
 				[server, channel, emoji, data.override || false,
 				 data.tolerance, data.to_remove, data.blacklist,data.self_star]);
 			} catch(e) {
@@ -74,20 +74,31 @@ class StarboardStore extends Collection {
 			}
 
 			try {
-				var data = await this.db.query(`
+				var data = await this.db.get(`
 					SELECT starboards.*, (
 						SELECT COUNT(*) FROM star_posts
 						WHERE channel_id = starboards.channel_id
-					) AS message_count FROM starboards WHERE server_id = $1 AND channel_id = $2`,
-					[server, channel]);
+					) AS message_count FROM starboards WHERE server_id = ? AND channel_id = ?`,
+					[server, channel], {
+						id: String,
+						server_id: String,
+						channel_id: String,
+						emoji: String,
+						override: Boolean,
+						tolerance: Number,
+						to_remove: Number,
+						blacklist: val => val ? JSON.parse(val) : [],
+						self_star: Boolean,
+						message_count: Number
+					});
 			} catch(e) {
 				console.log(e);
 				return rej(e.message);
 			}
 
-			if(data.rows && data.rows[0]) {
-				this.set(`${server}-${channel}`, data.rows[0])
-				res(data.rows[0])
+			if(data && data[0]) {
+				this.set(`${server}-${channel}`, data[0])
+				res(data[0])
 			} else res(undefined);
 		})
 	}
@@ -95,19 +106,30 @@ class StarboardStore extends Collection {
 	async getByEmoji(server, emoji) {
 		return new Promise(async (res, rej) => {
 			try {
-				var data = await this.db.query(`
+				var data = await this.db.get(`
 					SELECT starboards.*, (
 						SELECT COUNT(*) FROM star_posts
 						WHERE channel_id = starboards.channel_id
-					) AS message_count FROM starboards WHERE server_id = $1 AND emoji = $2`,
-					[server, emoji]);
+					) AS message_count FROM starboards WHERE server_id = ? AND emoji = ?`,
+					[server, emoji], {
+						id: String,
+						server_id: String,
+						channel_id: String,
+						emoji: String,
+						override: Boolean,
+						tolerance: Number,
+						to_remove: Number,
+						blacklist: val => val ? JSON.parse(val) : [],
+						self_star: Boolean,
+						message_count: Number
+					});
 			} catch(e) {
 				console.log(e);
 				return rej(e.message);
 			}
 
-			if(data.rows && data.rows[0]) {
-				res(data.rows[0])
+			if(data && data[0]) {
+				res(data[0])
 			} else res(undefined);
 		})
 	}
@@ -115,19 +137,30 @@ class StarboardStore extends Collection {
 	async getAll(server) {
 		return new Promise(async (res, rej) => {
 			try {
-				var data = await this.db.query(`
+				var data = await this.db.get(`
 					SELECT starboards.*, (
 						SELECT COUNT(*) FROM star_posts
 						WHERE channel_id = starboards.channel_id
-					) AS message_count FROM starboards WHERE server_id = $1`,
-					[server]);
+					) AS message_count FROM starboards WHERE server_id = ?`,
+					[server], {
+						id: String,
+						server_id: String,
+						channel_id: String,
+						emoji: String,
+						override: Boolean,
+						tolerance: Number,
+						to_remove: Number,
+						blacklist: val => val ? JSON.parse(val) : [],
+						self_star: Boolean,
+						message_count: Number
+					});
 			} catch(e) {
 				console.log(e);
 				return rej(e.message);
 			}
 
-			if(data.rows && data.rows[0]) {
-				res(data.rows)
+			if(data && data[0]) {
+				res(data)
 			} else res(undefined);
 		})
 	}
@@ -135,12 +168,12 @@ class StarboardStore extends Collection {
 	async update(server, channel, data = {}) {
 		return new Promise(async (res, rej) => {
 			try {
-				await this.db.query(`UPDATE starboards SET ${Object.keys(data).map((k, i) => k+"=$"+(i+3)).join(",")} WHERE server_id = $1 AND channel_id = $2`,[server, channel, ...Object.values(data)]);
+				await this.db.get(`UPDATE starboards SET ${Object.keys(data).map((k, i) => k+"=?").join(",")} WHERE server_id = ? AND channel_id = ?`,[...Object.values(data), server, channel]);
 			} catch(e) {
 				console.log(e);
 				return rej(e.message);
 			}
-			
+
 			res(await this.get(server, channel, true));
 		})
 	}
@@ -148,7 +181,7 @@ class StarboardStore extends Collection {
 	async delete(server, channel) {
 		return new Promise(async (res, rej) => {
 			try {
-				await this.db.query(`DELETE FROM starboards WHERE server_id = $1 AND channel_id = $2`, [server, channel]);
+				await this.db.get(`DELETE FROM starboards WHERE server_id = ? AND channel_id = ?`, [server, channel]);
 			} catch(e) {
 				console.log(e);
 				return rej(e.message);
@@ -163,7 +196,7 @@ class StarboardStore extends Collection {
 		return new Promise(async (res, rej) => {
 			try {
 				var starboards = await this.getAll(server);
-				await this.db.query(`DELETE FROM starboards WHERE server_id = $1`, [server]);
+				await this.db.get(`DELETE FROM starboards WHERE server_id = ?`, [server]);
 			} catch(e) {
 				console.log(e);
 				return rej(e.message || e);

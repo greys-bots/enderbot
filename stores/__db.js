@@ -1,12 +1,25 @@
 var fs = require('fs');
-var {Pool} = require('pg');
+var dblite = require('dblite');
 
 module.exports = async (bot) => {
-	const db = new Pool();
+	const db = dblite(__dirname + '/../data.sqlite', '-header');
 
-	await db.query(`
+	// promisify
+	db.get = function (...args) {
+		return new Promise((resolve, reject) => {
+			this.query(...args, (err, data) => {
+				if(err) {
+					return reject(err);
+				} else {
+					return resolve(data)
+				}
+			})
+		})
+	}
+
+	await db.get(`
 		CREATE TABLE IF NOT EXISTS configs (
-	    	id 				SERIAL PRIMARY KEY,
+	    	id 				INTEGER PRIMARY KEY AUTOINCREMENT,
 	        server_id   	TEXT UNIQUE,
 	        tolerance 		INTEGER,
 	        to_remove 		INTEGER,
@@ -16,7 +29,7 @@ module.exports = async (bot) => {
 	    );
 
 	    CREATE TABLE IF NOT EXISTS stats (
-	    	id 				SERIAL PRIMARY KEY,
+	    	id 				INTEGER PRIMARY KEY AUTOINCREMENT,
 	    	server_id 		TEXT,
 	    	starboard 		TEXT,
 	    	user_id 		TEXT,
@@ -25,7 +38,7 @@ module.exports = async (bot) => {
 	    );
 
 		CREATE TABLE IF NOT EXISTS starboards (
-			id 				SERIAL PRIMARY KEY,
+			id 				INTEGER PRIMARY KEY AUTOINCREMENT,
 			server_id 		TEXT,
 			channel_id		TEXT UNIQUE,
 			emoji			TEXT,
@@ -37,7 +50,7 @@ module.exports = async (bot) => {
 		);
 
 		CREATE TABLE IF NOT EXISTS star_posts (
-			id 				SERIAL PRIMARY KEY,
+			id 				INTEGER PRIMARY KEY AUTOINCREMENT,
 			server_id		TEXT,
 			channel_id		TEXT REFERENCES starboards(channel_id) ON DELETE CASCADE,
 			message_id 		TEXT,
@@ -47,7 +60,7 @@ module.exports = async (bot) => {
 		);
 
 		CREATE TABLE IF NOT EXISTS user_configs (
-			id 				SERIAL PRIMARY KEY,
+			id 				INTEGER PRIMARY KEY AUTOINCREMENT,
 			user_id 		TEXT,
 			status 			BOOLEAN
 		);

@@ -11,10 +11,10 @@ class UserConfigStore extends Collection {
 	async create(user, data = {}) {
 		return new Promise(async (res, rej) => {
 			try {
-				await this.db.query(`INSERT INTO user_configs (
+				await this.db.get(`INSERT INTO user_configs (
 					user_id,
 					status
-				) VALUES ($1, $2)`,
+				) VALUES (?, ?)`,
 				[user, data.status]);
 			} catch(e) {
 				console.log(e)
@@ -28,10 +28,10 @@ class UserConfigStore extends Collection {
 	async index(user, data = {}) {
 		return new Promise(async (res, rej) => {
 			try {
-				await this.db.query(`INSERT INTO user_configs (
+				await this.db.get(`INSERT INTO user_configs (
 					user_id,
 					status
-				) VALUES ($1, $2)`,
+				) VALUES (?,?)`,
 				[user, data.status]);
 			} catch(e) {
 				console.log(e)
@@ -50,15 +50,15 @@ class UserConfigStore extends Collection {
 			}
 
 			try {
-				var data = await this.db.query(`SELECT * FROM user_configs WHERE user_id = $1`, [user]);
+				var data = await this.db.get(`SELECT * FROM user_configs WHERE user_id = ?`, [user]);
 			} catch(e) {
 				console.log(e);
 				return rej(e.message);
 			}
 
-			if(data?.rows[0]) {
-				super.set(user, data.rows[0])
-				res(data.rows[0])
+			if(data?.[0]) {
+				super.set(user, data[0])
+				res(data[0])
 			} else return res(undefined);
 		})
 	}
@@ -66,7 +66,7 @@ class UserConfigStore extends Collection {
 	async update(user, data = {}) {
 		return new Promise(async (res, rej) => {
 			try {
-				await this.db.query(`UPDATE user_configs SET ${Object.keys(data).map((k, i) => k+"=$"+(i+2)).join(",")} WHERE user_id = $1`,[user, ...Object.values(data)]);
+				await this.db.get(`UPDATE user_configs SET ${Object.keys(data).map((k, i) => k+"=?").join(",")} WHERE user_id = ?`,[...Object.values(data), user]);
 			} catch(e) {
 				console.log(e);
 				return rej(e.message);
@@ -79,7 +79,7 @@ class UserConfigStore extends Collection {
 	async delete(user) {
 		return new Promise(async (res, rej) => {
 			try {
-				await this.db.query(`DELETE FROM user_configs WHERE user_id = $1`, [user]);
+				await this.db.get(`DELETE FROM user_configs WHERE user_id = ?`, [user]);
 				super.delete(user);
 			} catch(e) {
 				console.log(e);

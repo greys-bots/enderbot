@@ -94,14 +94,14 @@ class StarPostStore extends Collection {
 					content: `${data.emoji.includes(":") ? `<${data.emoji}>` : data.emoji} ${data.count}`,
 					embed
 				});
-				await this.db.query(`INSERT INTO star_posts (
+				await this.db.get(`INSERT INTO star_posts (
 					server_id,
 					channel_id,
 					message_id,
 					original_id,
 					emoji,
 					star_count
-				) VALUES ($1,$2,$3,$4,$5,$6)`,
+				) VALUES (?, ?, ?, ?, ?, ?)`,
 				[server, channel, message.id, msg.id, data.emoji, data.count])
 			} catch(e) {
 				console.log(e);
@@ -115,14 +115,14 @@ class StarPostStore extends Collection {
 	async index(server, channel, message, data = {}) {
 		return new Promise(async (res, rej) => {
 			try {
-				await this.db.query(`INSERT INTO star_posts (
+				await this.db.get(`INSERT INTO star_posts (
 					server_id,
 					channel_id,
 					message_id,
 					original_id,
 					emoji,
 					star_count
-				) VALUES ($1,$2,$3,$4,$5,$6)`,
+				) VALUES (?, ?, ?, ?, ?, ?)`,
 				[server, channel, message, data.original_id, data.emoji, data.count])
 			} catch(e) {
 				console.log(e);
@@ -138,19 +138,17 @@ class StarPostStore extends Collection {
 			try {
 				//second line grabs the correct starboard and returns it
 				//as a prop specifically called "starboard"
-				var data = await this.db.query(`
-					SELECT star_posts.*, (
-						SELECT row_to_json((SELECT a FROM (SELECT starboards.*) a))
-						FROM starboards WHERE starboards.channel_id = star_posts.channel_id
-					) AS starboard FROM star_posts WHERE server_id = $1 AND message_id = $2`,
+				var data = await this.db.get(`
+					SELECT * FROM star_posts WHERE server_id = ? AND message_id = ?`,
 					[server, message]);
 			} catch(e) {
 				console.log(e);
 				return rej(e.message);
 			}
 			
-			if(data.rows && data.rows[0]) {
-				res(data.rows[0])
+			if(data && data[0]) {
+				data[0].starboard = await this.bot.stores.starboards.get(server, data[0].channel_id);
+				res(data[0])
 			} else res(undefined);
 		})
 	}
@@ -158,19 +156,17 @@ class StarPostStore extends Collection {
 	async getByOriginal(server, message) {
 		return new Promise(async (res, rej) => {
 			try {
-				var data = await this.db.query(`
-					SELECT star_posts.*, (
-						SELECT row_to_json((SELECT a FROM (SELECT starboards.*) a))
-						FROM starboards WHERE starboards.channel_id = star_posts.channel_id
-					) AS starboard FROM star_posts WHERE server_id = $1 AND original_id = $2`,
+				var data = await this.db.get(`
+					SELECT * FROM star_posts WHERE server_id = ? AND original_id = ?`,
 					[server, message]);
 			} catch(e) {
 				console.log(e);
 				return rej(e.message);
 			}
 			
-			if(data.rows && data.rows[0]) {
-				res(data.rows)
+			if(data && data[0]) {
+				data[0].starboard = await this.bot.stores.starboards.get(server, data[0].channel_id);
+				res(data)
 			} else res(undefined);
 		})
 	}
@@ -178,19 +174,18 @@ class StarPostStore extends Collection {
 	async getAll(server) {
 		return new Promise(async (res, rej) => {
 			try {
-				var data = await this.db.query(`
-					SELECT star_posts.*, (
-						SELECT row_to_json((SELECT a FROM (SELECT starboards.*) a))
-						FROM starboards WHERE starboards.channel_id = star_posts.channel_id
-					) AS starboard FROM star_posts WHERE server_id = $1`,
+				var data = await this.db.get(`
+					SELECT * FROM star_posts WHERE server_id = ?`,
 					[server]);
 			} catch(e) {
 				console.log(e);
 				return rej(e.message);
 			}
 			
-			if(data.rows && data.rows[0]) {
-				res(data.rows)
+			if(data && data[0]) {
+				for(var row of data)
+					row.starboard = await this.bot.stores.starboards.get(server, row.channel_id);
+				res(data)
 			} else res(undefined);
 		})
 	}
@@ -198,19 +193,18 @@ class StarPostStore extends Collection {
 	async getByChannel(server, channel) {
 		return new Promise(async (res, rej) => {
 			try {
-				var data = await this.db.query(`
-					SELECT star_posts.*, (
-						SELECT row_to_json((SELECT a FROM (SELECT starboards.*) a))
-						FROM starboards WHERE starboards.channel_id = star_posts.channel_id
-					) AS starboard FROM star_posts WHERE server_id = $1 AND channel_id = $2`,
+				var data = await this.db.get(`
+					SELECT * FROM star_posts WHERE server_id = ? AND channel_id = ?`,
 					[server, channel]);
 			} catch(e) {
 				console.log(e);
 				return rej(e.message);
 			}
 			
-			if(data.rows && data.rows[0]) {
-				res(data.rows)
+			if(data && data[0]) {
+				for(var row of data)
+					row.starboard = await this.bot.stores.starboards.get(server, row.channel_id);
+				res(data)
 			} else res(undefined);
 		})
 	}
@@ -219,18 +213,18 @@ class StarPostStore extends Collection {
 		return new Promise(async (res, rej) => {
 			try {
 				if(options.board) {
-					var data = await this.db.query(`
+					var data = await this.db.get(`
 						SELECT DISTINCT * FROM star_posts
-						WHERE server_id = $1 AND channel_id = $2
+						WHERE server_id = ? AND channel_id = ?
 						ORDER BY star_count DESC
-						LIMIT $3`,
+						LIMIT ?`,
 					[server, options.board, options.count]);
 				} else {
-					var data = await this.db.query(`
+					var data = await this.db.get(`
 						SELECT DISTINCT * FROM star_posts
-						WHERE server_id = $1
+						WHERE server_id = ?
 						ORDER BY star_count DESC
-						LIMIT $2`,
+						LIMIT ?`,
 					[server, options.count]);
 				}
 					
@@ -239,9 +233,9 @@ class StarPostStore extends Collection {
 				return rej(e.message);
 			}
 
-			if(data.rows?.[0]) {
+			if(data?.[0]) {
 				var boards = [];
-				for(var post of data.rows) {
+				for(var post of data) {
 					var board = boards.find(b => b.channel_id == post.channel_id);
 					if(board) post.starboard = board;
 					else {
@@ -249,7 +243,7 @@ class StarPostStore extends Collection {
 						boards.push(post.starboard);
 					}
 				}
-				res(data.rows);
+				res(data);
 			} else res(undefined);
 		})
 	}
@@ -257,12 +251,12 @@ class StarPostStore extends Collection {
 	async update(server, message, data = {}) {
 		return new Promise(async (res, rej) => {
 			try {
-				var post = await this.db.query(`
-					UPDATE star_posts SET star_count = $1
-					WHERE server_id = $2 AND message_id = $3
+				var post = await this.db.get(`
+					UPDATE star_posts SET star_count = ?
+					WHERE server_id = ? AND message_id = ?
 					RETURNING *`,
 					[data.count || 0, server, message])
-				post = post.rows[0];
+				post = post[0];
 			} catch(e) {
 				console.log(e);
 				return rej(e.message);
@@ -289,7 +283,7 @@ class StarPostStore extends Collection {
 	async updateEmoji(server, old_emoji, new_emoji) {
 		return new Promise(async (res, rej) => {
 			try {
-				await this.db.query(`UPDATE star_posts SET emoji = $1 WHERE server_id = $2 AND emoji = $3`, [new_emoji, server, old_emoji]);
+				await this.db.get(`UPDATE star_posts SET emoji = ? WHERE server_id = ? AND emoji = ?`, [new_emoji, server, old_emoji]);
 			} catch(e) {
 				console.log(e);
 				return rej(e.message);
@@ -302,7 +296,7 @@ class StarPostStore extends Collection {
 	async delete(server, message) {
 		return new Promise(async (res, rej) => {
 			try {
-				await this.db.query(`DELETE FROM star_posts WHERE server_id = $1 AND message_id = $2`, [server, message]);
+				await this.db.get(`DELETE FROM star_posts WHERE server_id = ? AND message_id = ?`, [server, message]);
 				super.delete(`${server}-${message}`);
 			} catch(e) {
 				console.log(e);
@@ -317,7 +311,7 @@ class StarPostStore extends Collection {
 		return new Promise(async (res, rej) => {
 			try {
 				var posts = await this.getAll(server);
-				await this.db.query(`DELETE FROM star_posts WHERE server_id = $1`, [server]);
+				await this.db.get(`DELETE FROM star_posts WHERE server_id = ?`, [server]);
 				for(var post of posts) super.delete(`${server}-${post.message_id}`);
 			} catch(e) {
 				console.log(e);
@@ -332,7 +326,7 @@ class StarPostStore extends Collection {
 		return new Promise(async (res, rej) => {
 			try {
 				var posts = await this.getByChannel(server, channel);
-				await this.db.query(`DELETE FROM star_posts WHERE server_id = $1 AND channel_id = $2`, [server, channel]);
+				await this.db.get(`DELETE FROM star_posts WHERE server_id = ? AND channel_id = ?`, [server, channel]);
 				for(var post of posts) super.delete(`${server}-${post.message_id}`);
 			} catch(e) {
 				console.log(e);
@@ -366,7 +360,7 @@ class StarPostStore extends Collection {
 			if(!(cfg?.self_star || board.self_star) && user.id == msg.author.id) return res();
 
 			var tolerance = board.tolerance || cfg?.tolerance || 2;
-			var member = msg.guild.members.cache.find(m => m.id == user.id);
+			var member = await msg.guild.members.fetch(user.id);
 			if(!member) return rej("Member not found.");
 
 			var orig = await this.getByOriginal(msg.guild.id, msg.id);

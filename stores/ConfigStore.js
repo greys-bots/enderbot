@@ -11,14 +11,14 @@ class ConfigStore extends Collection {
 	async create(server, data = {}) {
 		return new Promise(async (res, rej) => {
 			try {
-				await this.db.query(`INSERT INTO configs (
+				await this.db.get(`INSERT INTO configs (
 					server_id,
 					tolerance,
 					to_remove,
 					override,
 					opped,
 					self_star
-				) VALUES ($1, $2, $3, $4, $5, $6)`,
+				) VALUES (?, ?, ?, ?, ?, ?)`,
 				[server, data.tolerance, data.to_remove,
 				 data.override, data.opped, data.self_star || true]);
 			} catch(e) {
@@ -33,14 +33,14 @@ class ConfigStore extends Collection {
 	async index(server, data = {}) {
 		return new Promise(async (res, rej) => {
 			try {
-				await this.db.query(`INSERT INTO configs (
+				await this.db.get(`INSERT INTO configs (
 					server_id,
 					tolerance,
 					to_remove,
 					override,
 					opped,
 					self_star
-				) VALUES ($1, $2, $3, $4, $5, $6)`,
+				) VALUES (?, ?, ?, ?, ?, ?)`,
 				[server, data.tolerance, data.to_remove,
 				 data.override, data.opped, data.self_star || true]);
 			} catch(e) {
@@ -60,15 +60,23 @@ class ConfigStore extends Collection {
 			}
 
 			try {
-				var data = await this.db.query(`SELECT * FROM configs WHERE server_id = $1`, [server]);
+				var data = await this.db.get(`SELECT * FROM configs WHERE server_id = ?`, [server], {
+					id: Number,
+					server_id: String,
+					tolerance: Number,
+					to_remove: Number,
+					override: Boolean,
+					opped: val => val ? JSON.parse(val) : [],
+					self_star: Boolean
+				});
 			} catch(e) {
 				console.log(e);
 				return rej(e.message);
 			}
 
-			if(data?.rows[0]) {
-				super.set(server, data.rows[0])
-				res(data.rows[0])
+			if(data?.[0]) {
+				super.set(server, data[0])
+				res(data[0])
 			} else return res(undefined);
 		})
 	}
@@ -76,7 +84,7 @@ class ConfigStore extends Collection {
 	async update(server, data = {}) {
 		return new Promise(async (res, rej) => {
 			try {
-				await this.db.query(`UPDATE configs SET ${Object.keys(data).map((k, i) => k+"=$"+(i+2)).join(",")} WHERE server_id = $1`,[server, ...Object.values(data)]);
+				await this.db.get(`UPDATE configs SET ${Object.keys(data).map((k, i) => k+"=?").join(",")} WHERE server_id = ?`,[...Object.values(data), server]);
 			} catch(e) {
 				console.log(e);
 				return rej(e.message);
@@ -89,7 +97,7 @@ class ConfigStore extends Collection {
 	async delete(server) {
 		return new Promise(async (res, rej) => {
 			try {
-				await this.db.query(`DELETE FROM configs WHERE server_id = $1`, [server]);
+				await this.db.get(`DELETE FROM configs WHERE server_id = ?`, [server]);
 				super.delete(server);
 			} catch(e) {
 				console.log(e);
