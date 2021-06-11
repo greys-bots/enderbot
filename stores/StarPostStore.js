@@ -275,7 +275,8 @@ class StarPostStore extends Collection {
 					await msg.edit(
 						`${post.emoji.includes(":") ?
 						`<${post.emoji}>` :
-						post.emoji} ${data.count}`
+						post.emoji} ${data.count}`,
+						{embed: msg.embeds[0]}
 					);
 				} else await this.delete(server, message);
 			} catch(e) {
@@ -366,7 +367,7 @@ class StarPostStore extends Collection {
 			if(!(cfg?.self_star || board.self_star) && user.id == msg.author.id) return res();
 
 			var tolerance = board.tolerance || cfg?.tolerance || 2;
-			var member = msg.guild.members.cache.find(m => m.id == user.id);
+			var member = await msg.guild.members.fetch(user.id);
 			if(!member) return rej("Member not found.");
 
 			var orig = await this.getByOriginal(msg.guild.id, msg.id);
