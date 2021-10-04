@@ -169,7 +169,7 @@ class StarboardStore extends Collection {
 				return rej(e.message || e);
 			}
 
-			for(starboard of starboards) super.delete(`${server}-${starboard.channel_id}`);
+			for(var starboard of starboards) super.delete(`${server}-${starboard.channel_id}`);
 			res();
 		})
 	}

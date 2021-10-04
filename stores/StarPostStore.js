@@ -304,7 +304,6 @@ class StarPostStore extends Collection {
 		return new Promise(async (res, rej) => {
 			try {
 				await this.db.query(`DELETE FROM star_posts WHERE server_id = $1 AND message_id = $2`, [server, message]);
-				super.delete(`${server}-${message}`);
 			} catch(e) {
 				console.log(e);
 				return rej(e.message || e);
@@ -317,9 +316,7 @@ class StarPostStore extends Collection {
 	async deleteAll(server) {
 		return new Promise(async (res, rej) => {
 			try {
-				var posts = await this.getAll(server);
 				await this.db.query(`DELETE FROM star_posts WHERE server_id = $1`, [server]);
-				for(var post of posts) super.delete(`${server}-${post.message_id}`);
 			} catch(e) {
 				console.log(e);
 				return rej(e.message || e);
@@ -332,9 +329,7 @@ class StarPostStore extends Collection {
 	async deleteByChannel(server, channel) {
 		return new Promise(async (res, rej) => {
 			try {
-				var posts = await this.getByChannel(server, channel);
 				await this.db.query(`DELETE FROM star_posts WHERE server_id = $1 AND channel_id = $2`, [server, channel]);
-				for(var post of posts) super.delete(`${server}-${post.message_id}`);
 			} catch(e) {
 				console.log(e);
 				return rej(e.message || e);
