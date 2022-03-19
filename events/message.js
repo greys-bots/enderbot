@@ -8,7 +8,7 @@ const WELCOMES = [
 module.exports = async (msg, bot)=>{
 	if(msg.author.bot) return;
 	if(!msg.content.toLowerCase().startsWith(bot.prefix)) {
-		var thanks = msg.content.match(/^(thanks? ?(you)?|ty),? ?(form )?fox/i);
+		var thanks = msg.content.match(/^(thanks? ?(you)?|ty),? ?ender(bot)?/i);
 		if(thanks) return await msg.channel.send(WELCOMES[Math.floor(Math.random() * WELCOMES.length)]);
 		return;
 	}
